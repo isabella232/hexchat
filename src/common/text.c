@@ -79,6 +79,7 @@ scrollback_get_filename (session *sess)
 	if (!net)
 		return NULL;
 
+	net = log_create_filename (net);
 	buf = g_strdup_printf ("%s" G_DIR_SEPARATOR_S "scrollback" G_DIR_SEPARATOR_S "%s" G_DIR_SEPARATOR_S "%s.txt", get_xdir (), net, "");
 	mkdir_p (buf);
 	g_free (buf);
@@ -89,6 +90,7 @@ scrollback_get_filename (session *sess)
 	else
 		buf = NULL;
 	g_free (chan);
+	g_free (net);
 
 	if (buf)
 	{
@@ -222,7 +224,7 @@ scrollback_load (session *sess)
 	GDataInputStream *istream;
 	gchar *buf, *text;
 	gint lines = 0;
-	time_t stamp;
+	time_t stamp = 0;
 
 	if (sess->text_scrollback == SET_DEFAULT)
 	{
@@ -272,12 +274,19 @@ scrollback_load (session *sess)
 			 * Some don't even have a timestamp
 			 * Some don't have any text at all
 			 */
-			if (buf[0] == 'T')
+			if (buf[0] == 'T' && buf[1] == ' ')
 			{
 				if (sizeof (time_t) == 4)
-					stamp = g_ascii_strtoull (buf + 2, NULL, 10);
+					stamp = strtoul (buf + 2, NULL, 10);
 				else
 					stamp = g_ascii_strtoull (buf + 2, NULL, 10); /* in case time_t is 64 bits */
+
+				if (G_UNLIKELY(stamp == 0))
+				{
+					g_warning ("Invalid timestamp in scrollback file");
+					continue;
+				}
+
 				text = strchr (buf + 3, ' ');
 				if (text && text[1])
 				{
@@ -314,7 +323,7 @@ scrollback_load (session *sess)
 			/* If its only an encoding error it may be specific to the line */
 			if (g_error_matches (err, G_CONVERT_ERROR, G_CONVERT_ERROR_ILLEGAL_SEQUENCE))
 			{
-				g_warning ("Invalid utf8 in scrollback file\n");
+				g_warning ("Invalid utf8 in scrollback file");
 				g_clear_error (&err);
 				continue;
 			}
@@ -336,8 +345,7 @@ scrollback_load (session *sess)
 	if (lines)
 	{
 		text = ctime (&stamp);
-		text[24] = 0;	/* get rid of the \n */
-		buf = g_strdup_printf ("\n*\t%s %s\n\n", _("Loaded log from"), text);
+		buf = g_strdup_printf ("\n*\t%s %s\n", _("Loaded log from"), text);
 		fe_print_text (sess, buf, 0, TRUE);
 		g_free (buf);
 		/*EMIT_SIGNAL (XP_TE_GENMSG, sess, "*", buf, NULL, NULL, NULL, 0);*/
@@ -736,6 +744,8 @@ text_convert_invalid (const gchar* text, gssize len, GIConv converter, const gch
 
 	/* Find the first position of an invalid sequence. */
 	result_part = g_convert_with_iconv (text, len, converter, &invalid_start_pos, &result_part_len, NULL);
+	g_iconv (converter, NULL, NULL, NULL, NULL);
+
 	if (result_part != NULL)
 	{
 		/* All text converted successfully on the first try. Return it. */
@@ -757,8 +767,15 @@ text_convert_invalid (const gchar* text, gssize len, GIConv converter, const gch
 	{
 		g_assert (current_start + invalid_start_pos < end);
 
-		/* Convert everything before the position of the invalid sequence. It should be successful. */
+		/* Convert everything before the position of the invalid sequence. It should be successful.
+		 * But iconv may not convert everything till invalid_start_pos since the last few bytes may be part of a shift sequence.
+		 * So get the new bytes_read and use it as the actual invalid_start_pos to handle this.
+		 *
+		 * See https://github.com/hexchat/hexchat/issues/1758
+		 */
 		result_part = g_convert_with_iconv (current_start, invalid_start_pos, converter, &invalid_start_pos, &result_part_len, NULL);
+		g_iconv (converter, NULL, NULL, NULL, NULL);
+
 		g_assert (result_part != NULL);
 		g_string_append_len (result, result_part, result_part_len);
 		g_free (result_part);
@@ -770,6 +787,8 @@ text_convert_invalid (const gchar* text, gssize len, GIConv converter, const gch
 		current_start += invalid_start_pos + 1;
 
 		result_part = g_convert_with_iconv (current_start, end - current_start, converter, &invalid_start_pos, &result_part_len, NULL);
+		g_iconv (converter, NULL, NULL, NULL, NULL);
+
 		if (result_part != NULL)
 		{
 			/* The rest of the text converted successfully. Append it and return the whole converted text. */
@@ -1498,27 +1517,38 @@ void
 pevent_make_pntevts (void)
 {
 	int i, m;
-	char out[1024];
 
 	for (i = 0; i < NUM_XP; i++)
 	{
 		g_free (pntevts[i]);
 		if (pevt_build_string (pntevts_text[i], &(pntevts[i]), &m) != 0)
 		{
-			g_snprintf (out, sizeof (out),
-						 _("Error parsing event %s.\nLoading default."), te[i].name);
-			fe_message (out, FE_MSG_WARN);
-			g_free (pntevts_text[i]);
 			/* make-te.c sets this 128 flag (DON'T call gettext() flag) */
-			if (te[i].num_args & 128)
-				pntevts_text[i] = g_strdup (te[i].def);
-			else
+			const gboolean translate = !(te[i].num_args & 128);
+
+			g_warning ("Error parsing event %s\nLoading default.", te[i].name);
+			g_free (pntevts_text[i]);
+
+			if (translate)
 				pntevts_text[i] = g_strdup (_(te[i].def));
-			if (pevt_build_string (pntevts_text[i], &(pntevts[i]), &m) != 0)
+			else
+				pntevts_text[i] = g_strdup (te[i].def);
+
+			if (pevt_build_string (pntevts_text[i], &(pntevts[i]), &m) != 0 && !translate)
 			{
-				fprintf (stderr,
-							"HexChat CRITICAL *** default event text failed to build!\n");
-				abort ();
+				g_error ("HexChat CRITICAL *** default event text failed to build!");
+			}
+			else
+			{
+				g_warning ("Error parsing translated event %s\nLoading untranslated.", te[i].name);
+				g_free (pntevts_text[i]);
+
+				pntevts_text[i] = g_strdup (te[i].def);
+
+				if (pevt_build_string (pntevts_text[i], &(pntevts[i]), &m) != 0)
+				{
+					g_error ("HexChat CRITICAL *** default event text failed to build!");
+				}
 			}
 		}
 	}
@@ -2031,6 +2061,7 @@ text_emit (int index, session *sess, char *a, char *b, char *c, char *d,
 	/* ===Highlighted message=== */
 	case XP_TE_HCHANACTION:
 	case XP_TE_HCHANMSG:
+		fe_set_tab_color (sess, 3);
 		if (chanopt_is_set (prefs.hex_input_beep_hilight, sess->alert_beep) && (!prefs.hex_away_omit_alerts || !sess->server->is_away))
 			sound_beep (sess);
 		if (chanopt_is_set (prefs.hex_input_flash_hilight, sess->alert_taskbar) && (!prefs.hex_away_omit_alerts || !sess->server->is_away))

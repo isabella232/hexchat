@@ -272,7 +272,8 @@ static const struct defaultserver def[] =
 	{"PonyChat", 0, 0, 0, LOGIN_SASL, 0, TRUE},
 	{0,			"irc.ponychat.net"},
 
-	{"PTNet.org", 0, 0, "ISO-8859-1"},
+	{"PTNet.org",	0},
+	/* Note that the network suggests ISO-8859-1 but most users ignore this */
 	{0,			"uevora.ptnet.org"},
 	{0,			"vianetworks.ptnet.org"},
 
@@ -362,42 +363,6 @@ static const struct defaultserver def[] =
 };
 
 GSList *network_list = 0;
-
-#if !GLIB_CHECK_VERSION(2,34,0)
-#define g_slist_copy_deep servlist_slist_copy_deep
-/* FIXME copy-paste from gslist.c, should be dumped sometime */
-static GSList*
-servlist_slist_copy_deep (GSList *list, GCopyFunc func, gpointer user_data)
-{
-  GSList *new_list = NULL;
-
-  if (list)
-    {
-      GSList *last;
-
-      new_list = g_slice_new (GSList);
-      if (func)
-        new_list->data = func (list->data, user_data);
-      else
-        new_list->data = list->data;
-      last = new_list;
-      list = list->next;
-      while (list)
-        {
-          last->next = g_slice_new (GSList);
-          last = last->next;
-          if (func)
-            last->data = func (list->data, user_data);
-          else
-            last->data = list->data;
-          list = list->next;
-        }
-      last->next = NULL;
-    }
-
-  return new_list;
-}
-#endif
 
 favchannel *
 servlist_favchan_copy (favchannel *fav)

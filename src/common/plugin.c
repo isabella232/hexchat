@@ -426,14 +426,14 @@ plugin_auto_load_cb (char *filename)
 	}
 }
 
-static char *
+static const char *
 plugin_get_libdir (void)
 {
 	const char *libdir;
 
 	libdir = g_getenv ("HEXCHAT_LIBDIR");
 	if (libdir && *libdir)
-		return (char*)libdir;
+		return libdir;
 	else
 		return HEXCHATLIBDIR;
 }
@@ -441,7 +441,7 @@ plugin_get_libdir (void)
 void
 plugin_auto_load (session *sess)
 {
-	char *lib_dir; 
+	const char *lib_dir;
 	char *sub_dir;
 	ps = sess;
 
@@ -455,6 +455,7 @@ plugin_auto_load (session *sess)
 	for_files (lib_dir, "hcdoat.dll", plugin_auto_load_cb);
 	for_files (lib_dir, "hcexec.dll", plugin_auto_load_cb);
 	for_files (lib_dir, "hcfishlim.dll", plugin_auto_load_cb);
+	for_files(lib_dir, "hclua.dll", plugin_auto_load_cb);
 	for_files (lib_dir, "hcmpcinfo.dll", plugin_auto_load_cb);
 	for_files (lib_dir, "hcperl.dll", plugin_auto_load_cb);
 	for_files (lib_dir, "hcpython2.dll", plugin_auto_load_cb);
@@ -1339,7 +1340,7 @@ hexchat_list_fields (hexchat_plugin *ph, const char *name)
 	};
 	static const char * const channels_fields[] =
 	{
-		"schannel",	"schannelkey", "schantypes", "pcontext", "iflags", "iid", "ilag", "imaxmodes",
+		"schannel", "schannelkey", "schanmodes", "schantypes", "pcontext", "iflags", "iid", "ilag", "imaxmodes",
 		"snetwork", "snickmodes", "snickprefixes", "iqueue", "sserver", "itype", "iusers",
 		NULL
 	};
@@ -1436,6 +1437,8 @@ hexchat_list_str (hexchat_plugin *ph, hexchat_list *xlist, const char *name)
 			return ((session *)data)->channel;
 		case 0x8cea5e7c: /* channelkey */
 			return ((session *)data)->channelkey;
+		case 0x5716ab1e: /* chanmodes */
+			return ((session*)data)->server->chanmodes;
 		case 0x577e0867: /* chantypes */
 			return ((session *)data)->server->chantypes;
 		case 0x38b735af: /* context */
@@ -1957,7 +1960,13 @@ hexchat_pluginpref_get_int (hexchat_plugin *pl, const char *var)
 
 	if (hexchat_pluginpref_get_str_real (pl, var, buffer, sizeof(buffer)))
 	{
-		return atoi (buffer);
+		int ret = atoi (buffer);
+
+		/* 0 could be success or failure, who knows */
+		if (ret == 0 && *buffer != '0')
+			return -1;
+
+		return ret;
 	}
 	else
 	{

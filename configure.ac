@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([HexChat],[2.12.0])
+AC_INIT([HexChat],[2.12.2])
 
 AC_PREREQ([2.64])
 AC_COPYRIGHT([Copyright (C) 1998-2010 Peter Zelezny])
@@ -118,6 +118,10 @@ AC_ARG_ENABLE(perl,
 	[AS_HELP_STRING([--disable-perl],[don\'t build the perl plugin])],
         perl=$enableval, perl=yes)
 
+AC_ARG_ENABLE(lua,
+	[AS_HELP_STRING([--disable-lua],[don\'t build the lua plugin])],
+        lua=$enableval, lua=yes)
+
 AC_ARG_ENABLE(perl_old,
 	[AS_HELP_STRING([--disable-perl_old],[no backwards compatibility for perl plugin])],
         perl_old=$enableval, perl_old=yes)
@@ -170,6 +174,9 @@ AC_ARG_WITH(theme-manager,
 	[AS_HELP_STRING([--with-theme-manager],[compile theme manager (needs monodevelop, default: off)])],
 		theme_manager=$withval, theme_manager=no)
 
+AC_ARG_ENABLE(stack-protector,
+	[AS_HELP_STRING([--disable-stack-protector],[disable building with stack-protector])],
+        stack_protector=$enableval, stack_protector=yes)
 
 
 dnl *********************************************************************
@@ -186,11 +193,11 @@ dnl *********************************************************************
 dnl ** GLIB *************************************************************
 dnl *********************************************************************
 
-AM_PATH_GLIB_2_0([2.32.0], [], [AC_MSG_ERROR([Glib not found!])], [gmodule gobject gio])
+AM_PATH_GLIB_2_0([2.34.0], [], [AC_MSG_ERROR([Glib not found!])], [gmodule gobject gio])
 COMMON_CFLAGS="$GLIB_CFLAGS -DG_DISABLE_SINGLE_INCLUDES"
 COMMON_LIBS="$GLIB_LIBS"
-AC_DEFINE([GLIB_VERSION_MIN_REQUIRED], [GLIB_VERSION_2_32], [Dont warn using older APIs])
-AC_DEFINE([GLIB_VERSION_MAX_ALLOWED], [GLIB_VERSION_2_32], [Prevents using newer APIs])
+AC_DEFINE([GLIB_VERSION_MIN_REQUIRED], [GLIB_VERSION_2_34], [Dont warn using older APIs])
+AC_DEFINE([GLIB_VERSION_MAX_ALLOWED], [GLIB_VERSION_2_34], [Prevents using newer APIs])
 
 dnl *********************************************************************
 dnl ** GTK **************************************************************
@@ -215,6 +222,40 @@ AS_IF([test "x$_gdk_tgt" = xquartz], [
 		GUI_LIBS="$GUI_LIBS $GTK_MAC_LIBS"
 		GUI_CFLAGS="$GUI_CFLAGS $GTK_MAC_CFLAGS"
 		AC_DEFINE(HAVE_GTK_MAC)
+	])
+])
+
+
+dnl *********************************************************************
+dnl ** Lua **************************************************************
+dnl *********************************************************************
+
+AS_IF([test "$lua" = yes], [
+	AC_MSG_CHECKING(for plugin interface used by lua)
+	AS_IF([test "$plugin" = yes], [
+		AC_MSG_RESULT([yes])
+
+		m4_define_default([_LUA_LIST], [luajit lua lua5.3 lua53 lua5.2 lua52 lua5.1 lua51])
+
+		AC_ARG_VAR([LUA], [The Lua pkgconfig name, e.g. luajit or lua5.2])
+		AS_IF([test "x$LUA" = 'x'], [
+			for lua_var in _LUA_LIST; do
+				$PKG_CONFIG --exists $lua_var || continue
+				LUA=$lua_var
+				break
+			done
+			AS_IF([test "x$LUA" = 'x'], [
+				AC_MSG_ERROR([Failed to find lua])
+			])
+		])
+
+		PKG_CHECK_MODULES([LUA], $LUA, [
+			AC_SUBST([LUA_CFLAGS])
+			AC_SUBST([LUA_LIBS])
+		])
+	], [
+		AC_MSG_RESULT([plugins are disabled, use the --enable-plugin option for lua])
+		lua=no
 	])
 ])
 
@@ -332,7 +373,7 @@ dnl *********************************************************************
 
 
 AS_IF([test "$openssl" != no], [
-	PKG_CHECK_MODULES(OPENSSL, [openssl], [
+	PKG_CHECK_MODULES(OPENSSL, [openssl >= 0.9.8], [
 		AC_DEFINE(USE_OPENSSL)
 		openssl=yes
 		COMMON_LIBS="$COMMON_LIBS $OPENSSL_LIBS"
@@ -564,6 +605,7 @@ AM_CONDITIONAL(USE_LIBCANBERRA, test "x$libcanberra" = "xyes")
 AM_CONDITIONAL(DO_TEXT, test "x$textfe" = "xyes")
 AM_CONDITIONAL(DO_GTK, test "x$gtkfe" = "xyes")
 AM_CONDITIONAL(DO_PERL, test "x$perl" = "xyes")
+AM_CONDITIONAL(DO_LUA, test "x$lua" = "xyes")
 AM_CONDITIONAL(DO_PYTHON, test "x$python" != "xno")
 AM_CONDITIONAL(DO_PLUGIN, test "x$plugin" = "xyes")
 AM_CONDITIONAL(DO_CHECKSUM, test "x$checksum" = "xyes")
@@ -584,7 +626,6 @@ dnl *********************************************************************
 AX_APPEND_COMPILE_FLAGS([\
 	-pipe \
 	-funsigned-char \
-	-fstack-protector-strong \
 	-fPIE \
 	-fPIC \
 	-Wall \
@@ -602,6 +643,12 @@ AX_APPEND_COMPILE_FLAGS([\
 	-Werror=date-time \
 	-Werror=implicit-function-declaration \
 	-Werror=pointer-arith \
+])
+
+AS_IF([test "$stack_protector" = "yes"], [
+	AX_APPEND_COMPILE_FLAGS([ \
+		-fstack-protector-strong \
+	])
 ])
 
 AX_APPEND_LINK_FLAGS([ \
@@ -716,6 +763,7 @@ src/htm/Makefile
 src/htm/thememan
 osx/Info.plist
 plugins/Makefile
+plugins/lua/Makefile
 plugins/python/Makefile
 plugins/perl/Makefile
 plugins/checksum/Makefile
@@ -741,6 +789,7 @@ echo libcanberra support ... : $libcanberra
 echo Plugin interface ...... : $plugin
 echo libproxy support ...... : $libproxy
 echo
+echo Lua ................... : $lua \($LUA\)
 echo Perl .................. : $perl
 echo Python ................ : $python
 echo

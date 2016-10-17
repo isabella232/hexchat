@@ -1,4 +1,5 @@
-sudo: false
+sudo: required
+dist: trusty
 language: c
 cache: apt
 compiler: clang
@@ -23,6 +24,7 @@ addons:
             - libdbus-glib-1-dev
             - libglib2.0-dev
             - libgtk2.0-dev
+            - libluajit-5.1-dev
             - libnotify-dev
             - libpci-dev
             - libperl-dev

@@ -319,7 +319,6 @@ is_hilight (char *from, char *text, session *sess, server *serv)
 			sess->nick_said = TRUE;
 			lastact_update (sess);
 		}
-		fe_set_hilight (sess);
 		return 1;
 	}
 
@@ -1123,6 +1122,7 @@ inbound_nameslist_end (server *serv, char *chan,
 			{
 				sess->end_of_names = TRUE;
 				sess->ignore_names = FALSE;
+				fe_userlist_numbers (sess);
 			}
 			list = list->next;
 		}
@@ -1133,6 +1133,7 @@ inbound_nameslist_end (server *serv, char *chan,
 	{
 		sess->end_of_names = TRUE;
 		sess->ignore_names = FALSE;
+		fe_userlist_numbers (sess);
 		return TRUE;
 	}
 	return FALSE;
@@ -1594,7 +1595,7 @@ inbound_login_end (session *sess, char *text, const message_tags_data *tags_data
 			&& ((((ircnet *)serv->network)->pass && inbound_nickserv_login (serv))
 				|| ((ircnet *)serv->network)->commandlist))
 		{
-			serv->joindelay_tag = fe_timeout_add (prefs.hex_irc_join_delay * 1000, check_autojoin_channels, serv);
+			serv->joindelay_tag = fe_timeout_add_seconds (prefs.hex_irc_join_delay, check_autojoin_channels, serv);
 		}
 		else
 		{

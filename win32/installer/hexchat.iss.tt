@@ -64,7 +64,7 @@ Name: "translations"; Description: "Translations"; Types: normal custom; Flags: 
 Name: "spell"; Description: "Spelling Dictionaries"; Types: custom; Flags: disablenouninstallwarning
 Name: "plugins"; Description: "Plugins"; Types: custom; Flags: disablenouninstallwarning
 Name: "plugins\checksum"; Description: "Checksum"; Types: custom; Flags: disablenouninstallwarning
-Name: "plugins\doat"; Description: "Do At"; Types: custom; Flags: disablenouninstallwarning
+Name: "plugins\doat"; Description: "Do At"; Types: normal custom; Flags: disablenouninstallwarning
 Name: "plugins\exec"; Description: "Exec"; Types: custom; Flags: disablenouninstallwarning
 Name: "plugins\fishlim"; Description: "FiSHLiM"; Types: custom; Flags: disablenouninstallwarning
 Name: "plugins\mpcinfo"; Description: "mpcInfo"; Types: custom; Flags: disablenouninstallwarning
@@ -72,6 +72,7 @@ Name: "plugins\sysinfo"; Description: "SysInfo"; Types: custom; Flags: disableno
 Name: "plugins\upd"; Description: "Update Checker"; Types: normal custom; Flags: disablenouninstallwarning
 Name: "plugins\winamp"; Description: "Winamp"; Types: custom; Flags: disablenouninstallwarning
 Name: "langs"; Description: "Language Interfaces"; Types: custom; Flags: disablenouninstallwarning
+Name: "langs\lua"; Description: "Lua"; Types: normal custom; Flags: disablenouninstallwarning
 Name: "langs\perl"; Description: "Perl (requires Perl 5.20)"; Types: custom; Flags: disablenouninstallwarning
 Name: "langs\python"; Description: "Python Interface"; Types: custom; Flags: disablenouninstallwarning
 Name: "langs\python\python2"; Description: "Python (requires Python 2.7)"; Types: custom; Flags: disablenouninstallwarning exclusive
@@ -99,6 +100,7 @@ Root: HKCR; Subkey: ".hct\shell\open\command"; ValueType: string; ValueName: "";
 Filename: "{app}\hexchat.exe"; Description: "Run HexChat after closing the Wizard"; Flags: nowait postinstall skipifsilent
 Filename: "http://docs.hexchat.org/en/latest/changelog.html"; Description: "See what's changed"; Flags: shellexec runasoriginaluser postinstall skipifsilent unchecked
 Filename: "{tmp}\vcredist.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Visual C++ Redistributable"; Flags: skipifdoesntexist; Tasks: not portable
+Filename: "{tmp}\vcredist2013.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Visual C++ Redistributable"; Flags: skipifdoesntexist; Tasks: not portable
 Filename: "{tmp}\dotnet4.exe"; Parameters: "/q /norestart"; StatusMsg: "Installing .NET"; Components: xtm; Flags: skipifdoesntexist; Tasks: not portable
 Filename: "{tmp}\perl.msi"; StatusMsg: "Installing Perl"; Components: langs\perl; Flags: shellexec skipifdoesntexist; Tasks: not portable
 Filename: "{tmp}\python.msi"; StatusMsg: "Installing Python"; Components: langs\python; Flags: shellexec skipifdoesntexist; Tasks: not portable
@@ -138,6 +140,7 @@ Source: "harfbuzz.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "iconv.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "libeay32.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "libenchant.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
+Source: "libffi.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "libintl.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "libpng16.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
@@ -155,6 +158,14 @@ Source: "lib\enchant\*"; DestDir: "{app}\lib\enchant"; Flags: ignoreversion; Com
 
 Source: "lib\gtk-2.0\i686-pc-vs14\engines\*"; DestDir: "{app}\lib\gtk-2.0\i686-pc-vs14\engines"; Flags: ignoreversion; Components: libs
 
+Source: "girepository-1.0.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: langs\lua
+Source: "lua51.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: langs\lua
+Source: "lib\lua\lgi\*.dll"; DestDir: "{app}\lib\lua\lgi"; Flags: ignoreversion; Components: langs\lua
+Source: "lib\girepository-1.0\*.typelib"; DestDir: "{app}\lib\girepository-1.0"; Flags: ignoreversion; Components: langs\lua
+Source: "share\lua\*.lua"; DestDir: "{app}\share\lua"; Flags: ignoreversion; Components: langs\lua
+Source: "share\lua\lgi\*.lua"; DestDir: "{app}\share\lua\lgi"; Flags: ignoreversion; Components: langs\lua
+Source: "share\lua\lgi\override\*.lua"; DestDir: "{app}\share\lua\lgi\override"; Flags: ignoreversion; Components: langs\lua
+
 Source: "plugins\hcchecksum.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: plugins\checksum
 Source: "plugins\hcdoat.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: plugins\doat
 Source: "plugins\hcexec.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: plugins\exec
@@ -171,6 +182,7 @@ Source: "plugins\hcsysinfo.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion;
 Source: "plugins\hcpython2.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: langs\python\python2
 Source: "plugins\hcpython3.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: langs\python\python3
 Source: "plugins\hcperl.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: langs\perl
+Source: "plugins\hclua.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion; Components: langs\lua
 
 Source: "hexchat.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: libs
 Source: "hexchat-text.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: xctext
@@ -229,6 +241,12 @@ begin
 	Result := FileExists(GetSysDir() + 'vcruntime140.dll');;
 end;
 
+function CheckVC2013Install(): Boolean;
+begin
+	Result := FileExists(GetSysDir() + 'msvcr120.dll');;
+end;
+
+
 /////////////////////////////////////////////////////////////////////
 function CheckSpellInstall(): Boolean;
 var
@@ -255,6 +273,7 @@ end;
 procedure CurPageChanged(CurPageID: Integer);
 var
 	REDIST: String;
+	REDIST_2013: String;
 	PERL: String;
 	PY2: String;
 	PY3: String;
@@ -270,14 +289,16 @@ begin
 
 #if APPARCH == "x64"
 		REDIST := 'https://dl.hexchat.net/misc/vcredist_2015_x64.exe';
+		REDIST_2013 := 'https://dl.hexchat.net/misc/vcredist_2013_x64.exe';
 		PERL := 'https://dl.hexchat.net/misc/perl/Perl%205.20.0%20x64.msi';
-		PY2 := 'https://python.org/ftp/python/2.7.10/python-2.7.10.amd64.msi';
-		PY3 := 'https://python.org/ftp/python/3.5.1/python-3.5.1-amd64.exe';
+		PY2 := 'https://www.python.org/ftp/python/2.7.12/python-2.7.12.amd64.msi';
+		PY3 := 'https://www.python.org/ftp/python/3.5.2/python-3.5.2-amd64.exe';
 #else
 		REDIST := 'https://dl.hexchat.net/misc/vcredist_2015_x86.exe';
+		REDIST_2013 := 'https://dl.hexchat.net/misc/vcredist_2013_x86.exe';
 		PERL := 'https://dl.hexchat.net/misc/perl/Perl%205.20.0%20x86.msi';
-		PY2 := 'https://python.org/ftp/python/2.7.10/python-2.7.10.msi';
-		PY3 := 'https://python.org/ftp/python/3.5.1/python-3.5.1.exe';
+		PY2 := 'https://www.python.org/ftp/python/2.7.12/python-2.7.12.msi';
+		PY3 := 'https://www.python.org/ftp/python/3.5.2/python-3.5.2.exe';
 #endif
 		DOTNET := 'https://dl.hexchat.net/misc/dotnet_40.exe';
 		SPELL := 'https://dl.hexchat.net/hexchat/HexChat%20Spelling%20Dictionaries%20r2.exe';
@@ -294,7 +315,12 @@ begin
 		if not WizardSilent() then
 		begin
 			if IsComponentSelected('langs\perl') and not CheckDLL('perl520.dll') then
-				idpAddFile(PERL, ExpandConstant('{tmp}\perl.msi'));
+			begin
+				if not CheckVC2013Install() then
+					idpAddFile(REDIST_2013, ExpandConstant('{tmp}\vcredist2013.exe'));
+
+				idpAddFile(PERL, ExpandConstant('{tmp}\perl.msi'))
+			end;
 
 			if IsComponentSelected('langs\python\python2') and not CheckDLL('python27.dll') then
 				idpAddFile(PY2, ExpandConstant('{tmp}\python.msi'));

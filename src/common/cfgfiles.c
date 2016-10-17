@@ -459,7 +459,6 @@ const struct prefs vars[] =
 	{"gui_ulist_hide", P_OFFINT (hex_gui_ulist_hide), TYPE_BOOL},
 	{"gui_ulist_icons", P_OFFINT (hex_gui_ulist_icons), TYPE_BOOL},
 	{"gui_ulist_pos", P_OFFINT (hex_gui_ulist_pos), TYPE_INT},
-	{"gui_ulist_resizable", P_OFFINT (hex_gui_ulist_resizable), TYPE_BOOL},
 	{"gui_ulist_show_hosts", P_OFFINT(hex_gui_ulist_show_hosts), TYPE_BOOL},
 	{"gui_ulist_sort", P_OFFINT (hex_gui_ulist_sort), TYPE_INT},
 	{"gui_ulist_style", P_OFFINT (hex_gui_ulist_style), TYPE_BOOL},
@@ -532,7 +531,7 @@ const struct prefs vars[] =
 	{"net_auto_reconnectonfail", P_OFFINT (hex_net_auto_reconnectonfail), TYPE_BOOL},
 #endif
 	{"net_bind_host", P_OFFSET (hex_net_bind_host), TYPE_STR},
-	{"net_ping_timeout", P_OFFINT (hex_net_ping_timeout), TYPE_INT},
+	{"net_ping_timeout", P_OFFINT (hex_net_ping_timeout), TYPE_INT, hexchat_reinit_timers},
 	{"net_proxy_auth", P_OFFINT (hex_net_proxy_auth), TYPE_BOOL},
 	{"net_proxy_host", P_OFFSET (hex_net_proxy_host), TYPE_STR},
 	{"net_proxy_pass", P_OFFSET (hex_net_proxy_pass), TYPE_STR},
@@ -771,7 +770,6 @@ load_default_config(void)
 	prefs.hex_gui_tray_blink = 1;
 	prefs.hex_gui_ulist_count = 1;
 	prefs.hex_gui_ulist_icons = 1;
-	prefs.hex_gui_ulist_resizable = 1;
 	prefs.hex_gui_ulist_style = 1;
 	prefs.hex_gui_win_save = 1;
 	prefs.hex_input_flash_hilight = 1;
@@ -1046,6 +1044,11 @@ save_config (void)
 				return 0;
 			}
 		}
+
+		if (vars[i].after_update != NULL)
+		{
+			vars[i].after_update();
+		}
 		i++;
 	}
 	while (vars[i].name);
@@ -1292,6 +1295,11 @@ cmd_set (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 				else
 				{
 					set_showval (sess, &vars[i], tbuf);
+				}
+
+				if (vars[i].after_update != NULL)
+				{
+					vars[i].after_update();
 				}
 				break;
 			}

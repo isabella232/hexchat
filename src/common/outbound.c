@@ -162,8 +162,8 @@ process_data_init (char *buf, char *cmd, char *word[],
 
 	word[0] = "\000\000";
 	word_eol[0] = "\000\000";
-	word[1] = (char *)buf;
-	word_eol[1] = (char *)cmd;
+	word[1] = buf;
+	word_eol[1] = cmd;
 
 	while (1)
 	{
@@ -1335,6 +1335,33 @@ cmd_menu (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 	}
 
 	return FALSE;
+}
+
+static int
+mhop_cb (struct User *user, multidata *data)
+{
+	if (!user->hop)
+	{
+		data->nicks[data->i] = user->nick;
+		data->i++;
+	}
+	return TRUE;
+}
+
+static int
+cmd_mhop (struct session *sess, char *tbuf, char *word[], char *word_eol[])
+{
+	char **nicks = g_new0 (char *, sess->total - sess->hops);
+	multidata data;
+
+	data.nicks = nicks;
+	data.i = 0;
+	tree_foreach (sess->usertree, (tree_traverse_func *)mhop_cb, &data);
+	send_channel_modes (sess, tbuf, nicks, 0, data.i, '+', 'h', 0);
+
+	g_free (nicks);
+
+	return TRUE;
 }
 
 static int
@@ -2805,9 +2832,14 @@ cmd_msg (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 			else
 			{
 				/* mask out passwords */
-				if (g_ascii_strcasecmp (nick, "nickserv") == 0 &&
-					 g_ascii_strncasecmp (msg, "identify ", 9) == 0)
-					msg = "identify ****";
+				if (g_ascii_strcasecmp (nick, "nickserv") == 0)
+				{
+					if (g_ascii_strncasecmp (msg, "identify ", 9) == 0)
+						msg = "identify ****";
+					else if (g_ascii_strncasecmp (msg, "ghost ", 6) == 0)
+						msg = "ghost ****";
+				}
+
 				EMIT_SIGNAL (XP_TE_MSGSEND, sess, nick, msg, NULL, NULL, 0);
 			}
 
@@ -3965,6 +3997,8 @@ const struct commands xc_cmds[] = {
 	 N_("ME <action>, sends the action to the current channel (actions are written in the 3rd person, like /me jumps)")},
 	{"MENU", cmd_menu, 0, 0, 1, "MENU [-eX] [-i<ICONFILE>] [-k<mod>,<key>] [-m] [-pX] [-r<X,group>] [-tX] {ADD|DEL} <path> [command] [unselect command]\n"
 										 "       See http://hexchat.readthedocs.org/en/latest/plugins.html#controlling-the-gui for more details."},
+	{"MHOP", cmd_mhop, 1, 1, 1,
+	 N_("MHOP, Mass hop's all users in the current channel (needs chanop)")},
 	{"MKICK", cmd_mkick, 1, 1, 1,
 	 N_("MKICK, Mass kicks everyone except you in the current channel (needs chanop)")},
 	{"MODE", cmd_mode, 1, 0, 1, 0},
