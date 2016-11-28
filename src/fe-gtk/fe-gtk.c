@@ -660,16 +660,17 @@ fe_print_text (struct session *sess, char *text, time_t stamp,
 {
 	PrintTextRaw (sess->res->buffer, (unsigned char *)text, prefs.hex_text_indent, stamp);
 
-	if (!no_activity && !sess->new_data && sess != current_tab &&
-		sess->gui->is_tab && !sess->nick_said)
-	{
-		sess->new_data = TRUE;
-		lastact_update (sess);
-		if (sess->msg_said)
-			fe_set_tab_color (sess, 2);
-		else
-			fe_set_tab_color (sess, 1);
-	}
+	if (no_activity || !sess->gui->is_tab)
+		return;
+
+	if (sess == current_tab)
+		fe_set_tab_color (sess, 0);
+	else if (sess->tab_state & TAB_STATE_NEW_HILIGHT)
+		fe_set_tab_color (sess, 3);
+	else if (sess->tab_state & TAB_STATE_NEW_MSG)
+		fe_set_tab_color (sess, 2);
+	else
+		fe_set_tab_color (sess, 1);
 }
 
 void
