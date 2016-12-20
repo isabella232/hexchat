@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([HexChat],[2.12.3])
+AC_INIT([HexChat],[2.12.4])
 
 AC_PREREQ([2.64])
 AC_COPYRIGHT([Copyright (C) 1998-2010 Peter Zelezny])
@@ -374,6 +374,8 @@ AS_IF([test "$openssl" != no], [
 		openssl=yes
 		COMMON_LIBS="$COMMON_LIBS $OPENSSL_LIBS"
 		COMMON_CFLAGS="$COMMON_CFLAGS $OPENSSL_CFLAGS"
+		dnl Test for various functions that are not available in LibreSSL
+		AC_CHECK_FUNCS([SSL_CTX_get_ssl_method X509_get_signature_nid DH_set0_pqg DH_get0_key DH_set0_key])
 	], [
 		unset openssl_path ac_cv_lib_ssl_SSL_new ac_cv_header_openssl_ssl_h
 		AS_IF([test "$openssl" != yes], [
