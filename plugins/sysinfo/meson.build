@@ -1,0 +1,53 @@
+sysinfo_sources = [
+  'format.c',
+  'sysinfo.c',
+]
+
+sysinfo_deps = [
+  libgio_dep,
+  hexchat_plugin_dep
+]
+
+sysinfo_includes = []
+sysinfo_cargs = []
+
+system = host_machine.system()
+if system == 'linux' or system == 'darwin'
+  sysinfo_includes += 'shared'
+  sysinfo_sources += [
+    'shared/df.c'
+  ]
+
+  if system == 'linux'
+    libpci = dependency('libpci')
+    sysinfo_deps += libpci
+    sysinfo_includes += 'unix'
+    sysinfo_sources += [
+      'unix/backend.c',
+      'unix/match.c',
+      'unix/parse.c',
+      'unix/pci.c',
+    ]
+
+    picidsdir = libpci.get_pkgconfig_variable('idsdir')
+    pciids = join_paths(picidsdir, 'pci.ids')
+    sysinfo_cargs += '-DPCIIDS_FILE="@0@"'.format(pciids)
+  elif system == 'darwin'
+    add_languages('objc')
+    sysinfo_sources += 'osx/backend.m'
+  endif
+
+elif system == 'windows'
+  sysinfo_sources += 'win32/backend.c'
+else
+  error('sysinfo: Unknown system?')
+endif
+
+shared_module('sysinfo', sysinfo_sources,
+  dependencies: sysinfo_deps,
+  include_directories: include_directories(sysinfo_includes),
+  c_args: sysinfo_cargs,
+  install: true,
+  install_dir: plugindir,
+  name_prefix: '',
+)

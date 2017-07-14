@@ -2013,7 +2013,7 @@ text_emit (int index, session *sess, char *a, char *b, char *c, char *d,
 	unsigned int stripcolor_args = (chanopt_is_set (prefs.hex_text_stripcolor_msg, sess->text_strip) ? 0xFFFFFFFF : 0);
 	char tbuf[NICKLEN + 4];
 
-	if (prefs.hex_text_color_nicks && (index == XP_TE_CHANACTION || index == XP_TE_CHANMSG))
+	if (a != NULL && prefs.hex_text_color_nicks && (index == XP_TE_CHANACTION || index == XP_TE_CHANMSG))
 	{
 		g_snprintf (tbuf, sizeof (tbuf), "\003%d%s", text_color_of (a), a);
 		a = tbuf;
@@ -2098,7 +2098,8 @@ text_emit (int index, session *sess, char *a, char *b, char *c, char *d,
 		break;
 	}
 
-	sound_play_event (index);
+	if (!prefs.hex_away_omit_alerts || !sess->server->is_away)
+		sound_play_event (index);
 	display_event (sess, index, word, stripcolor_args, timestamp);
 }
 
