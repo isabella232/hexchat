@@ -29,6 +29,7 @@
 #include "pixmaps.h"
 #include "maingui.h"
 #include "menu.h"
+#include "gtkutil.h"
 
 #ifndef WIN32
 #include <unistd.h>
@@ -173,10 +174,10 @@ tray_stop_flash (void)
 		nets = tray_count_networks ();
 		chans = tray_count_channels ();
 		if (nets)
-			tray_set_tipf (_(DISPLAY_NAME": Connected to %u networks and %u channels"),
-								nets, chans);
+			tray_set_tipf (_("Connected to %u networks and %u channels - %s"),
+								nets, chans, _(DISPLAY_NAME));
 		else
-			tray_set_tipf (DISPLAY_NAME": %s", _("Not connected."));
+			tray_set_tipf ("%s - %s", _("Not connected."), _(DISPLAY_NAME));
 	}
 
 	if (custom_icon1)
@@ -627,11 +628,12 @@ tray_hilight_cb (char *word[], void *userdata)
 		/* FIXME: hides any previous private messages */
 		tray_hilight_count++;
 		if (tray_hilight_count == 1)
-			tray_set_tipf (_(DISPLAY_NAME": Highlighted message from: %s (%s)"),
-								word[1], hexchat_get_info (ph, "channel"));
+			tray_set_tipf (_("Highlighted message from: %s (%s) - %s"),
+								word[1], hexchat_get_info (ph, "channel"), _(DISPLAY_NAME));
 		else
-			tray_set_tipf (_(DISPLAY_NAME": %u highlighted messages, latest from: %s (%s)"),
-								tray_hilight_count, word[1], hexchat_get_info (ph, "channel"));
+			tray_set_tipf (_("%u highlighted messages, latest from: %s (%s) - %s"),
+								tray_hilight_count, word[1], hexchat_get_info (ph, "channel"),
+								_(DISPLAY_NAME));
 	}
 
 	return HEXCHAT_EAT_NONE;
@@ -649,10 +651,10 @@ tray_message_cb (char *word[], void *userdata)
 
 		tray_pub_count++;
 		if (tray_pub_count == 1)
-			tray_set_tipf (_(DISPLAY_NAME": Channel message from: %s (%s)"),
-								word[1], hexchat_get_info (ph, "channel"));
+			tray_set_tipf (_("Channel message from: %s (%s) - %s"),
+								word[1], hexchat_get_info (ph, "channel"), _(DISPLAY_NAME));
 		else
-			tray_set_tipf (_(DISPLAY_NAME": %u channel messages."), tray_pub_count);
+			tray_set_tipf (_("%u channel messages. - %s"), tray_pub_count, _(DISPLAY_NAME));
 	}
 
 	return HEXCHAT_EAT_NONE;
@@ -676,11 +678,11 @@ tray_priv (char *from, char *text)
 
 		tray_priv_count++;
 		if (tray_priv_count == 1)
-			tray_set_tipf (_(DISPLAY_NAME": Private message from: %s (%s)"),
-								from, network);
+			tray_set_tipf (_("Private message from: %s (%s) - %s"), from,
+								network, _(DISPLAY_NAME));
 		else
-			tray_set_tipf (_(DISPLAY_NAME": %u private messages, latest from: %s (%s)"),
-								tray_priv_count, from, network);
+			tray_set_tipf (_("%u private messages, latest from: %s (%s) - %s"),
+								tray_priv_count, from, network, _(DISPLAY_NAME));
 	}
 }
 
@@ -719,11 +721,11 @@ tray_dcc_cb (char *word[], void *userdata)
 
 		tray_file_count++;
 		if (tray_file_count == 1)
-			tray_set_tipf (_(DISPLAY_NAME": File offer from: %s (%s)"),
-								word[1], network);
+			tray_set_tipf (_("File offer from: %s (%s) - %s"), word[1], network,
+								_(DISPLAY_NAME));
 		else
-			tray_set_tipf (_(DISPLAY_NAME": %u file offers, latest from: %s (%s)"),
-								tray_file_count, word[1], network);
+			tray_set_tipf (_("%u file offers, latest from: %s (%s) - %s"),
+								tray_file_count, word[1], network, _(DISPLAY_NAME));
 	}
 
 	return HEXCHAT_EAT_NONE;
@@ -759,7 +761,8 @@ tray_apply_setup (void)
 	}
 	else
 	{
-		if (prefs.hex_gui_tray && !unity_mode ())
+		GtkWindow *window = GTK_WINDOW(hexchat_get_info (ph, "gtkwin_ptr"));
+		if (prefs.hex_gui_tray && gtkutil_tray_icon_supported (window))
 			tray_init ();
 	}
 }
@@ -793,7 +796,8 @@ tray_plugin_init (hexchat_plugin *plugin_handle, char **plugin_name,
 
 	hexchat_hook_print (ph, "Focus Window", -1, tray_focus_cb, NULL);
 
-	if (prefs.hex_gui_tray && !unity_mode ())
+	GtkWindow *window = GTK_WINDOW(hexchat_get_info (ph, "gtkwin_ptr"));
+	if (prefs.hex_gui_tray && gtkutil_tray_icon_supported (window))
 		tray_init ();
 
 	return 1;       /* return 1 for success */

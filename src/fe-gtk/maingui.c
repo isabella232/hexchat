@@ -51,6 +51,7 @@
 #include "plugin-tray.h"
 #include "xtext.h"
 #include "sexy-spell-entry.h"
+#include "gtkutil.h"
 
 #define GUI_SPACING (3)
 #define GUI_BORDER (0)
@@ -381,28 +382,31 @@ fe_set_title (session *sess)
 	switch (type)
 	{
 	case SESS_DIALOG:
-		g_snprintf (tbuf, sizeof (tbuf), DISPLAY_NAME": %s %s @ %s",
-					 _("Dialog with"), sess->channel, server_get_network (sess->server, TRUE));
+		g_snprintf (tbuf, sizeof (tbuf), "%s %s @ %s - %s",
+					 _("Dialog with"), sess->channel, server_get_network (sess->server, TRUE),
+					 _(DISPLAY_NAME));
 		break;
 	case SESS_SERVER:
-		g_snprintf (tbuf, sizeof (tbuf), DISPLAY_NAME": %s @ %s",
-					 sess->server->nick, server_get_network (sess->server, TRUE));
+		g_snprintf (tbuf, sizeof (tbuf), "%s @ %s - %s",
+					 sess->server->nick, server_get_network (sess->server, TRUE),
+					 _(DISPLAY_NAME));
 		break;
 	case SESS_CHANNEL:
 		/* don't display keys in the titlebar */
 		if (prefs.hex_gui_win_modes)
 		{
 			g_snprintf (tbuf, sizeof (tbuf),
-						 DISPLAY_NAME": %s @ %s / %s (%s)",
+						 "%s @ %s / %s (%s) - %s",
 						 sess->server->nick, server_get_network (sess->server, TRUE),
-						 sess->channel, sess->current_modes ? sess->current_modes : "");
+						 sess->channel, sess->current_modes ? sess->current_modes : "",
+						 _(DISPLAY_NAME));
 		}
 		else
 		{
 			g_snprintf (tbuf, sizeof (tbuf),
-						 DISPLAY_NAME": %s @ %s / %s",
+						 "%s @ %s / %s - %s",
 						 sess->server->nick, server_get_network (sess->server, TRUE),
-						 sess->channel);
+						 sess->channel, _(DISPLAY_NAME));
 		}
 		if (prefs.hex_gui_win_ucount)
 		{
@@ -411,12 +415,13 @@ fe_set_title (session *sess)
 		break;
 	case SESS_NOTICES:
 	case SESS_SNOTICES:
-		g_snprintf (tbuf, sizeof (tbuf), DISPLAY_NAME": %s @ %s (notices)",
-					 sess->server->nick, server_get_network (sess->server, TRUE));
+		g_snprintf (tbuf, sizeof (tbuf), "%s @ %s (notices) - %s",
+					 sess->server->nick, server_get_network (sess->server, TRUE),
+					 _(DISPLAY_NAME));
 		break;
 	default:
 	def:
-		g_snprintf (tbuf, sizeof (tbuf), DISPLAY_NAME);
+		g_snprintf (tbuf, sizeof (tbuf), _(DISPLAY_NAME));
 		gtk_window_set_title (GTK_WINDOW (sess->gui->window), tbuf);
 		return;
 	}
@@ -430,7 +435,7 @@ mg_windowstate_cb (GtkWindow *wid, GdkEventWindowState *event, gpointer userdata
 	if ((event->changed_mask & GDK_WINDOW_STATE_ICONIFIED) &&
 		 (event->new_window_state & GDK_WINDOW_STATE_ICONIFIED) &&
 		 prefs.hex_gui_tray_minimize && prefs.hex_gui_tray &&
-		 !unity_mode ())
+		 gtkutil_tray_icon_supported (wid))
 	{
 		tray_toggle_visibility (TRUE);
 		gtk_window_deiconify (wid);
@@ -1215,7 +1220,7 @@ mg_open_quit_dialog (gboolean minimize_button)
 	gtk_button_box_set_layout (GTK_BUTTON_BOX (dialog_action_area1),
 										GTK_BUTTONBOX_END);
 
-	if (minimize_button && !unity_mode ())
+	if (minimize_button && gtkutil_tray_icon_supported (GTK_WINDOW(dialog)))
 	{
 		button = gtk_button_new_with_mnemonic (_("_Minimize to Tray"));
 		gtk_widget_show (button);
@@ -3176,8 +3181,9 @@ mg_tabwindow_de_cb (GtkWidget *widget, GdkEvent *event, gpointer user_data)
 {
 	GSList *list;
 	session *sess;
+	GtkWindow *win = GTK_WINDOW(gtk_widget_get_toplevel (widget));
 
-	if (prefs.hex_gui_tray_close && !unity_mode () && tray_toggle_visibility (FALSE))
+	if (prefs.hex_gui_tray_close && gtkutil_tray_icon_supported (win) && tray_toggle_visibility (FALSE))
 		return TRUE;
 
 	/* check for remaining toplevel windows */

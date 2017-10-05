@@ -237,7 +237,7 @@ alert_match_word (char *word, char *masks)
 		{
 			endchar = *p;
 			*p = 0;
-			res = match (masks, word);
+			res = match (g_strchug (masks), word);
 			*p = endchar;
 
 			if (res)
@@ -940,7 +940,7 @@ inbound_notice (server *serv, char *to, char *nick, char *msg, char *ip, int id,
 		sess = find_channel (serv, ptr);
 
 	/* /notice [mode-prefix]#channel should end up in that channel */
-	if (!sess && strchr(serv->nick_prefixes, ptr[0]) != NULL)
+	if (!sess && ptr[0] && strchr(serv->nick_prefixes, ptr[0]) != NULL)
 	{
 		ptr++;
 		sess = find_channel (serv, ptr);
