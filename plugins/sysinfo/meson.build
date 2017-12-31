@@ -19,19 +19,22 @@ if system == 'linux' or system == 'darwin'
   ]
 
   if system == 'linux'
-    libpci = dependency('libpci')
-    sysinfo_deps += libpci
+    libpci = dependency('libpci', required: false, method: 'pkg-config')
+    if libpci.found()
+      sysinfo_deps += libpci
+      sysinfo_cargs += '-DHAVE_LIBPCI'
+      sysinfo_sources += 'unix/pci.c'
+
+      picidsdir = libpci.get_pkgconfig_variable('idsdir')
+      pciids = join_paths(picidsdir, 'pci.ids')
+      sysinfo_cargs += '-DPCIIDS_FILE="@0@"'.format(pciids)
+    endif
     sysinfo_includes += 'unix'
     sysinfo_sources += [
       'unix/backend.c',
       'unix/match.c',
       'unix/parse.c',
-      'unix/pci.c',
     ]
-
-    picidsdir = libpci.get_pkgconfig_variable('idsdir')
-    pciids = join_paths(picidsdir, 'pci.ids')
-    sysinfo_cargs += '-DPCIIDS_FILE="@0@"'.format(pciids)
   elif system == 'darwin'
     add_languages('objc')
     sysinfo_sources += 'osx/backend.m'
