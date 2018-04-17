@@ -1585,8 +1585,8 @@ mg_create_tabmenu (session *sess, GdkEventButton *event, chan *ch)
 static gboolean
 mg_tab_contextmenu_cb (chanview *cv, chan *ch, int tag, gpointer ud, GdkEventButton *event)
 {
-	/* middle-click or shift-click to close a tab */
-	if (((prefs.hex_gui_tab_middleclose && event->button == 2) || (event->button == 1 && event->state & STATE_SHIFT))
+	/* middle-click to close a tab */
+	if (((prefs.hex_gui_tab_middleclose && event->button == 2))
 		&& event->type == GDK_BUTTON_PRESS)
 	{
 		mg_xbutton_cb (cv, ch, tag, ud);
@@ -3200,11 +3200,29 @@ mg_tabwindow_de_cb (GtkWidget *widget, GdkEvent *event, gpointer user_data)
 	return TRUE;
 }
 
+#ifdef G_OS_WIN32
+static GdkFilterReturn
+mg_time_change (GdkXEvent *xevent, GdkEvent *event, gpointer data)
+{
+	MSG *msg = (MSG*)xevent;
+
+	if (msg->message == WM_TIMECHANGE)
+	{
+		_tzset();
+	}
+
+	return GDK_FILTER_CONTINUE;
+}
+#endif
+
 static void
 mg_create_tabwindow (session *sess)
 {
 	GtkWidget *win;
 	GtkWidget *table;
+#ifdef G_OS_WIN32
+	GdkWindow *parent_win;
+#endif
 
 	win = gtkutil_window_new ("HexChat", NULL, prefs.hex_gui_win_width,
 									  prefs.hex_gui_win_height, 0);
@@ -3269,6 +3287,11 @@ mg_create_tabwindow (session *sess)
 	mg_place_userlist_and_chanview (sess->gui);
 
 	gtk_widget_show (win);
+
+#ifdef G_OS_WIN32
+	parent_win = gtk_widget_get_window (win);
+	gdk_window_add_filter (parent_win, mg_time_change, NULL);
+#endif
 }
 
 void

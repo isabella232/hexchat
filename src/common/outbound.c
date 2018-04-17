@@ -2342,7 +2342,10 @@ cmd_ignore (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 				return FALSE;
 
 			mask = word[2];
-			if (strchr (mask, '?') == NULL &&
+			/* If not a full mask or using wildcards, assume nick */
+			if (strchr (mask, '!') == NULL &&
+			    strchr (mask, '@') == NULL &&
+			    strchr (mask, '?') == NULL &&
 			    strchr (mask, '*') == NULL)
 			{
 				mask = tbuf;
@@ -2607,7 +2610,7 @@ cmd_load (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 	}
 
 #ifdef USE_PLUGIN
-	if (g_str_has_suffix (word[2], "."G_MODULE_SUFFIX))
+	if (g_str_has_suffix (word[2], "."PLUGIN_SUFFIX))
 	{
 		arg = NULL;
 		if (word_eol[3][0])
@@ -3613,7 +3616,7 @@ cmd_unload (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 #ifdef USE_PLUGIN
 	gboolean by_file = FALSE;
 
-	if (g_str_has_suffix (word[2], "."G_MODULE_SUFFIX))
+	if (g_str_has_suffix (word[2], "."PLUGIN_SUFFIX))
 		by_file = TRUE;
 
 	switch (plugin_kill (word[2], by_file))
@@ -3638,7 +3641,7 @@ cmd_reload (struct session *sess, char *tbuf, char *word[], char *word_eol[])
 #ifdef USE_PLUGIN
 	gboolean by_file = FALSE;
 
-	if (g_str_has_suffix (word[2], "."G_MODULE_SUFFIX))
+	if (g_str_has_suffix (word[2], "."PLUGIN_SUFFIX))
 		by_file = TRUE;
 
 	switch (plugin_reload (sess, word[2], by_file))
